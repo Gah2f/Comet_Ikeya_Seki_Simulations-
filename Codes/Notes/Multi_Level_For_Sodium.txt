@@ -1,0 +1,516 @@
+# Multi-Level Monte Carlo Simulation for Sodium (Na)
+
+## Overview
+
+A two-level atom is useful for learning the basics, but it is not realistic for sodium.
+
+Real sodium has many energy levels:
+
+```text
+4P
+│
+4S
+│
+3D
+│
+3P
+│
+3S
+```
+
+Electrons can transition between many states, not just one ground and one excited state.
+
+A multi-level Monte Carlo simulation allows us to model these transitions more realistically.
+
+---
+
+# Why Move Beyond Two Levels?
+
+The two-level model assumes:
+
+```text
+Ground ↔ Excited
+```
+
+However sodium can do:
+
+```text
+3S → 3P
+3P → 3S
+
+3P → 4S
+4S → 3P
+
+3P → 3D
+3D → 3P
+
+...
+```
+
+Many transitions are possible simultaneously.
+
+---
+
+# State Representation
+
+## Two-Level Model
+
+```python
+atoms = [0,0,1,1,0]
+```
+
+Meaning:
+
+```text
+0 = Ground
+1 = Excited
+```
+
+---
+
+## Multi-Level Model
+
+Instead:
+
+```python
+atoms = [0,0,2,1,3]
+```
+
+where:
+
+```text
+0 = 3S
+1 = 3P
+2 = 4S
+3 = 3D
+...
+```
+
+Each integer represents an energy level.
+
+---
+
+# Energy-Level Diagram
+
+Example:
+
+```text
+      4P
+      │
+      │
+      4S
+      │
+      │
+      3D
+      │
+      │
+      3P
+      │
+      │
+      3S
+```
+
+Ground state:
+
+```text
+3S
+```
+
+All others:
+
+```text
+Excited states
+```
+
+---
+
+# Atomic Data Needed
+
+For every allowed transition:
+
+Need:
+
+- Lower level
+- Upper level
+- Wavelength
+- Einstein A coefficient
+- Einstein B coefficient
+
+Example table:
+
+| Lower | Upper | A21 |
+|---------|---------|---------|
+| 3P | 3S | 6e7 |
+| 4S | 3P | 2e7 |
+| 3D | 3P | 1e7 |
+
+---
+
+# New Idea: Transition Matrix
+
+Instead of:
+
+```text
+One upward rate
+One downward rate
+```
+
+we now have:
+
+```text
+Many rates
+```
+
+Represent them as a matrix:
+
+\[
+R_{ij}
+\]
+
+Meaning:
+
+```text
+Rate from state i to state j
+```
+
+Example:
+
+```text
+      3S   3P   4S
+
+3S    0    R01   0
+
+3P   R10    0   R12
+
+4S    0    R21   0
+```
+
+---
+
+# Monte Carlo Logic
+
+For each atom:
+
+Determine:
+
+```text
+What state am I in?
+```
+
+Then compute:
+
+```text
+What transitions are possible?
+```
+
+Then randomly choose one.
+
+---
+
+# Example
+
+Suppose atom is in:
+
+```text
+3P
+```
+
+Possible transitions:
+
+```text
+3P → 3S
+3P → 4S
+3P → 3D
+```
+
+Rates:
+
+```text
+6e7
+2e7
+1e7
+```
+
+Total:
+
+```text
+9e7
+```
+
+---
+
+# Probability of Each Path
+
+Normalize:
+
+\[
+P_i
+=
+\frac{R_i}{\sum R}
+\]
+
+Example:
+
+```text
+3P → 3S = 6/9
+
+3P → 4S = 2/9
+
+3P → 3D = 1/9
+```
+
+---
+
+# Monte Carlo Selection
+
+Generate random number:
+
+```python
+r = np.random.random()
+```
+
+Example:
+
+```text
+r = 0.73
+```
+
+Probabilities:
+
+```text
+0.00 - 0.67 → 3S
+
+0.67 - 0.89 → 4S
+
+0.89 - 1.00 → 3D
+```
+
+Result:
+
+```text
+3P → 4S
+```
+
+---
+
+# Time Evolution
+
+For every timestep:
+
+For every atom:
+
+```text
+Find current level
+↓
+Find allowed transitions
+↓
+Compute probabilities
+↓
+Generate random number
+↓
+Choose transition
+↓
+Update state
+```
+
+---
+
+# Generalized Propagation
+
+Instead of:
+
+```python
+ground = atoms == 0
+excited = atoms == 1
+```
+
+we now use:
+
+```python
+current_state = atoms[i]
+```
+
+and consult:
+
+```python
+transition_matrix
+```
+
+to determine possible moves.
+
+---
+
+# Example Transition Matrix
+
+```python
+R = np.array([
+
+# 3S  3P  4S  3D
+
+[0,   5e6, 0,   0],
+
+[6e7, 0,   2e7, 1e7],
+
+[0,   3e7, 0,   0],
+
+[0,   2e7, 0,   0]
+
+])
+```
+
+Meaning:
+
+```text
+R[1,0]
+```
+
+is:
+
+```text
+3P → 3S
+```
+
+---
+
+# Why This Is Better
+
+Two-level model:
+
+```text
+Only one spectral line
+```
+
+Multi-level model:
+
+```text
+Many spectral lines
+```
+
+Allows modeling:
+
+- Sodium D1
+- Sodium D2
+- Higher excited states
+- Cascading transitions
+
+---
+
+# Cascades
+
+A very important effect.
+
+Example:
+
+```text
+4S
+↓
+3P
+↓
+3S
+```
+
+One excitation can produce multiple emissions.
+
+Two-level models cannot capture this.
+
+---
+
+# Connection to Spectroscopy
+
+Observed spectrum:
+
+```text
+589 nm
+589.6 nm
+818 nm
+1140 nm
+...
+```
+
+Each line comes from a different transition.
+
+A multi-level model naturally predicts:
+
+- Which lines appear
+- Their relative strengths
+- Their populations
+
+---
+
+# Connection to Your CSV
+
+Your sodium CSV already contains:
+
+- Wavelengths
+- A coefficients
+- Ji
+- Jk
+
+This means:
+
+```text
+You already have most of the information
+needed to build a multi-level system.
+```
+
+The next step is identifying:
+
+```text
+Unique energy levels
+```
+
+and building:
+
+```text
+Transition Matrix
+```
+
+from the CSV.
+
+---
+
+# Research Significance
+
+Multi-level simulations are used for:
+
+- Stellar atmospheres
+- Comet sodium tails
+- Planetary atmospheres
+- Radiative transfer
+- Non-LTE modeling
+
+This is much closer to professional astrophysics than a two-level model.
+
+---
+
+# Roadmap
+
+Level 1:
+✓ Two-Level Monte Carlo
+
+Level 2:
+✓ Multi-Level Monte Carlo
+
+Level 3:
+□ Include radiation field spectrum
+
+Level 4:
+□ Include photoionization
+
+Level 5:
+□ Include radiative transfer
+
+Level 6:
+□ Full sodium fluorescence model
+
+---
+
+# Key Takeaways
+
+- Real sodium has many energy levels.
+- Multi-level simulations allow transitions between many states.
+- Transition probabilities are built from Einstein coefficients.
+- A transition matrix stores all possible moves.
+- Monte Carlo methods choose transitions statistically.
+- Cascading transitions become possible.
+- This approach is much closer to real astrophysical modeling.

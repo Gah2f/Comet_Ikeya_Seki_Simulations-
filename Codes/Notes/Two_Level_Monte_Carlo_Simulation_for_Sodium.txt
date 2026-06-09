@@ -1,0 +1,598 @@
+# Two-Level Monte Carlo Simulation for Sodium (Na)
+
+## Overview
+
+A Two-Level Monte Carlo Simulation models a sodium atom as having only two possible states:
+
+```text
+State 0 = Ground State
+State 1 = Excited State
+```
+
+The simulation uses random numbers and transition probabilities to determine whether an atom absorbs or emits a photon during each timestep.
+
+This is one of the ***simplest models*** used in atomic physics and astrophysics to understand radiative processes.
+
+---
+
+# Why Use a Two-Level Model?
+
+Real sodium atoms have many energy levels.
+
+Example:
+
+```text
+3S
+3P
+4S
+4P
+3D
+...
+```
+
+However, to understand the fundamental physics of absorption and emission, we simplify the system to:
+
+```text
+Excited State (1)
+       ↑ ↓
+Ground State (0)
+```
+
+This simplification allows us to study:
+
+- Absorption
+- Spontaneous emission
+- Stimulated emission
+- Population evolution
+
+without unnecessary complexity.
+
+---
+
+# Physical Processes
+
+## 1. Absorption
+
+The atom absorbs a photon and becomes excited.
+
+```text
+Ground State → Excited State
+0 → 1
+```
+
+Rate:
+
+\[
+R_{up} = B_{12}\rho
+\]
+
+where:
+
+- \(B_{12}\) = Einstein absorption coefficient
+- \(\rho\) = radiation energy density
+
+---
+
+## 2. Spontaneous Emission
+
+The atom naturally decays.
+
+```text
+Excited State → Ground State
+1 → 0
+```
+
+Rate:
+
+\[
+A_{21}
+\]
+
+This process does not require external radiation.
+
+---
+
+## 3. Stimulated Emission
+
+An incoming photon triggers emission.
+
+```text
+Excited State → Ground State
+1 → 0
+```
+
+Rate:
+
+\[
+B_{21}\rho
+\]
+
+This process is responsible for laser operation.
+
+---
+
+# Einstein Coefficients
+
+## A21
+
+Measures spontaneous emission.
+
+Units:
+
+\[
+s^{-1}
+\]
+
+Interpretation:
+
+If
+
+\[
+A_{21}=10^8 \, s^{-1}
+\]
+
+then approximately \(10^8\) decays occur per second.
+
+---
+
+## B12
+
+Measures absorption strength.
+
+Controls:
+
+```text
+0 → 1
+```
+
+---
+
+## B21
+
+Measures stimulated emission strength.
+
+Controls:
+
+```text
+1 → 0
+```
+
+---
+
+# Degeneracy
+
+Each energy level has a statistical weight:
+
+\[
+g = 2J+1
+\]
+
+where:
+
+- \(J\) = total angular momentum quantum number
+
+For sodium:
+
+```python
+wi = 2*Ji + 1
+wk = 2*Jk + 1
+```
+
+Einstein relation:
+
+\[
+g_1 B_{12}
+=
+g_2 B_{21}
+\]
+
+---
+
+# Radiation Field
+
+## Spectral Energy Density
+
+\[
+\rho(\nu)
+\]
+
+Represents how much radiation exists at the transition frequency.
+
+### Physical Meaning
+
+More photons available:
+
+```text
+Higher rho
+↓
+More absorption
+↓
+More stimulated emission
+```
+
+---
+
+# Transition Rates
+
+## Upward Rate
+
+\[
+R_{up}
+=
+B_{12}\rho
+\]
+
+Represents excitation events per second.
+
+---
+
+## Downward Rate
+
+\[
+R_{down}
+=
+A_{21}
++
+B_{21}\rho
+\]
+
+Represents all decay events per second.
+
+---
+
+# Why Monte Carlo?
+
+Atoms do not transition at exact times.
+
+Instead:
+
+```text
+Transitions are random
+```
+
+Monte Carlo methods simulate this randomness using probability.
+
+---
+
+# Poisson Statistics
+
+Atomic transitions follow Poisson statistics.
+
+Probability of zero transitions:
+
+\[
+P(0)
+=
+e^{-Rdt}
+\]
+
+Probability of at least one transition:
+
+\[
+P
+=
+1-e^{-Rdt}
+\]
+
+---
+
+# Converting Rates to Probabilities
+
+For excitation:
+
+\[
+P_{up}
+=
+1-e^{-R_{up}dt}
+\]
+
+For decay:
+
+\[
+P_{down}
+=
+1-e^{-R_{down}dt}
+\]
+
+These probabilities are used directly in the simulation.
+
+---
+
+# Why Must dt Be Small?
+
+Requirement:
+
+\[
+Rdt \ll 1
+\]
+
+This ensures:
+
+\[
+P(k>1)\approx0
+\]
+
+meaning only one transition occurs during a timestep.
+
+### Analogy
+
+Imagine checking a traffic light:
+
+- Every second → accurate
+- Every hour → misses many changes
+
+Small timesteps capture atomic events correctly.
+
+---
+
+# Representation of Atoms
+
+Suppose:
+
+```python
+atoms = [0,0,1,1,0]
+```
+
+This means:
+
+```text
+Atom 1 → Ground
+Atom 2 → Ground
+Atom 3 → Excited
+Atom 4 → Excited
+Atom 5 → Ground
+```
+
+---
+
+# Number of Atoms
+
+```python
+N_atoms = 10000
+```
+
+Meaning:
+
+```text
+Simulate 10,000 sodium atoms
+```
+
+A large population reduces statistical noise.
+
+---
+
+# Initial State
+
+```python
+atoms = np.zeros(N_atoms,dtype=int)
+```
+
+Initially:
+
+```text
+All atoms start in the ground state.
+```
+
+---
+
+# Random Numbers
+
+Each timestep:
+
+```python
+rand = np.random.random(N_atoms)
+```
+
+Example:
+
+```text
+0.12
+0.75
+0.04
+0.89
+...
+```
+
+Each atom gets its own random number.
+
+---
+
+# State Masks
+
+Ground-state atoms:
+
+```python
+ground = atoms == 0
+```
+
+Excited-state atoms:
+
+```python
+excited = atoms == 1
+```
+
+---
+
+# Excitation Condition
+
+```python
+excite = ground & (rand < P_up)
+```
+
+### Why Use "&" (AND)?
+
+Both conditions must be true:
+
+```text
+Atom is in ground state
+AND
+Excitation event occurs
+```
+
+---
+
+# Decay Condition
+
+```python
+decay = excited & (rand < P_down)
+```
+
+Meaning:
+
+```text
+Atom is excited
+AND
+Decay event occurs
+```
+
+---
+
+# State Updates
+
+```python
+atoms[excite] = 1
+atoms[decay] = 0
+```
+
+Result:
+
+```text
+0 → 1
+1 → 0
+```
+
+---
+
+# Propagation Function
+
+```python
+def propagate(atoms, P_up, P_down):
+
+    rand = np.random.random(len(atoms))
+
+    ground = atoms == 0
+    excited = atoms == 1
+
+    excite = ground & (rand < P_up)
+    decay = excited & (rand < P_down)
+
+    atoms[excite] = 1
+    atoms[decay] = 0
+
+    return atoms
+```
+
+Purpose:
+
+Advance the simulation by one timestep.
+
+---
+
+# Simulation Loop
+
+```python
+for step in range(n_steps):
+
+    atoms = propagate(atoms, P_up, P_down)
+
+    excited_history.append(np.sum(atoms))
+```
+
+Each iteration:
+
+1. Generate random numbers
+2. Determine excitations
+3. Determine decays
+4. Update atom states
+5. Record population
+
+---
+
+# Expected Behavior
+
+Initially:
+
+```text
+All atoms are in ground state
+```
+
+As time progresses:
+
+```text
+Absorption increases population
+Decay decreases population
+```
+
+Eventually:
+
+```text
+Population reaches equilibrium
+```
+
+where
+
+```text
+Excitations ≈ Decays
+```
+
+---
+
+# Connection to Sodium Spectroscopy
+
+Using sodium atomic data:
+
+- Wavelength (\(\lambda\))
+- Einstein coefficient (\(A_{21}\))
+- Quantum numbers (\(J_i\), \(J_k\))
+
+we calculate:
+
+\[
+B_{12}
+\]
+
+\[
+B_{21}
+\]
+
+and then:
+
+\[
+R_{up}
+\]
+
+\[
+R_{down}
+\]
+
+for the simulation.
+
+---
+
+# Research Applications
+
+This model forms the foundation for:
+
+- Sodium fluorescence studies
+- Comet sodium tail modeling
+- Planetary atmospheres
+- Radiative transfer simulations
+- Spectroscopic interpretation
+
+---
+
+# Key Takeaways
+
+- Sodium is approximated as a two-level atom.
+- Absorption causes excitation.
+- Emission causes decay.
+- Einstein coefficients determine transition rates.
+- Poisson statistics convert rates into probabilities.
+- Monte Carlo methods simulate random atomic behavior.
+- Large populations reveal average physical behavior.
+
+---
+
+# Summary
+
+The Two-Level Monte Carlo Simulation models thousands of sodium atoms that randomly absorb and emit photons according to physical transition probabilities. By combining Einstein coefficients, radiation fields, and Poisson statistics, the simulation reproduces how atomic populations evolve over time and provides a foundation for more advanced spectroscopy and radiative transfer studies.
