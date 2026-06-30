@@ -2,6 +2,9 @@ import numpy as np
 import matplotlib.pyplot as plt
 from astropy import units as u
 from astropy.constants import c, h
+from sbpy.calib import Sun
+
+sun = Sun.from_default()
 
 lam = np.array([
      2852.81, 2853.01,
